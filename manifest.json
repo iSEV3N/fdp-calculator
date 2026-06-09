@@ -1,0 +1,17 @@
+{
+  "name": "FTL Calculation — FDP / Rest Period",
+  "short_name": "FDP Calc",
+  "description": "เครื่องคำนวณ FDP / Rest Period ตาม TCAR-OPS / OM-A Section 7",
+  "lang": "th",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>FTL Calculation — FDP / Rest Period</title>
+<meta name="theme-color" content="#0a0e14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FDP Calc">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#0a0e14;--panel:#111823;--panel-2:#0d141d;--line:#1e2a3a;--line-soft:#16202d;
+    --txt:#c9d4e0;--muted:#7d8da0;--amber:#ffb000;--amber-dim:#b88200;
+    --green:#3fb950;--red:#f85149;--blue:#4493f8;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:15px;line-height:1.5;padding:18px;
+    padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right));
+    padding-top:max(18px,env(safe-area-inset-top));padding-bottom:max(18px,env(safe-area-inset-bottom));
+    -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;
+    background-image:radial-gradient(circle at 12% -8%,rgba(255,176,0,.05),transparent 45%);}
+  .wrap{max-width:1000px;margin:0 auto}
+  /* mobile & tablet: prevent input zoom on iOS, bigger touch targets */
+  @media(max-width:820px){
+    input,select{font-size:16px !important}
+    .seg button{padding:12px 4px}
+    .chk{padding:9px 0}
+    .rm,.rt-del{width:36px;height:36px}
+    .addbtn{padding:13px}
+  }
+  header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--amber-dim);text-transform:uppercase}
+  h1{font-size:24px;font-weight:700;letter-spacing:-.01em;margin:4px 0 2px}
+  .sub{color:var(--muted);font-size:13px}.sub b{color:var(--txt)}
+  .ok-note{margin-top:10px;padding:9px 13px;border:1px solid rgba(63,185,80,.35);border-radius:8px;
+    background:rgba(63,185,80,.06);font-size:12px;color:#9fe0ab}
+  .ok-note b{color:#c6f0cd}
+
+  .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px;margin-top:16px}
+  @media(max-width:780px){.grid{grid-template-columns:1fr}body{padding:12px}h1{font-size:20px}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .card h2{font-size:12px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:center}
+
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  label .en{color:var(--txt)}
+  input,select{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--txt);
+    font-family:var(--mono);font-size:14px;padding:8px 10px;border-radius:7px}
+  input:focus,select:focus{outline:none;border-color:var(--amber-dim);box-shadow:0 0 0 2px rgba(255,176,0,.12)}
+  .field{margin-bottom:12px}
+  .row{display:grid;gap:9px}
+  .r2{grid-template-columns:1fr 1fr}.r3{grid-template-columns:1fr 1fr 1fr}
+
+  /* sectors */
+  .sector{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 28px;gap:7px;align-items:end;margin-bottom:8px}
+  .sector .mini{font-size:10px;color:var(--muted);margin-bottom:3px;font-family:var(--mono);letter-spacing:.08em}
+  .sector input{padding:7px 8px;font-size:13px;text-transform:uppercase}
+  .rm{background:var(--panel-2);border:1px solid var(--line);color:var(--red);border-radius:6px;cursor:pointer;height:34px;font-size:16px}
+  .rm:hover{background:rgba(248,81,73,.12)}
+  .addbtn{width:100%;background:var(--panel-2);border:1px dashed var(--line);color:var(--amber-dim);
+    padding:9px;border-radius:7px;cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.05em;margin-top:2px}
+  .addbtn:hover{border-color:var(--amber-dim);color:var(--amber)}
+
+  .chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--txt);cursor:pointer;padding:6px 0}
+  .chk input{width:auto;accent-color:var(--amber)}
+
+  /* summary */
+  .sumrow{display:grid;grid-template-columns:1.4fr .7fr 1fr 22px;gap:8px;align-items:center;
+    padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .sumrow:last-child{border-bottom:none}
+  .sumrow .k{color:var(--muted)}
+  .sumrow .lim{font-family:var(--mono);color:var(--muted);font-size:12px;text-align:right}
+  .sumrow .act{font-family:var(--mono);font-weight:600;text-align:right}
+  .act.ok{color:var(--green)}.act.bad{color:var(--red)}.act.neutral{color:var(--txt)}
+  .tick{font-size:15px;text-align:center}.tick.ok{color:var(--green)}.tick.bad{color:var(--red)}
+  .sechead{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--amber-dim);
+    text-transform:uppercase;margin:16px 0 4px;padding-top:8px;border-top:1px solid var(--line)}
+
+  .readout{text-align:center;padding:4px 0 14px;margin-bottom:10px}
+  .readout .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+  .readout .big{font-family:var(--mono);font-size:42px;font-weight:700;line-height:1.1;letter-spacing:.02em}
+  .readout .big small{font-size:16px;color:var(--amber-dim)}
+  .readout.ok .big{color:var(--green);text-shadow:0 0 16px rgba(63,185,80,.22)}
+  .readout.bad .big{color:var(--red);text-shadow:0 0 16px rgba(248,81,73,.25)}
+
+  .flag{margin-top:10px;padding:9px 12px;border-radius:7px;font-size:12px;display:none;gap:8px;align-items:flex-start}
+  .flag.show{display:flex}
+  .flag.bad{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.4);color:#ffb0ab}
+  .flag.warn{background:rgba(255,176,0,.08);border:1px solid var(--amber-dim);color:#e8c98a}
+
+  details{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  summary{cursor:pointer;padding:13px 16px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted);list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";color:var(--amber-dim)}
+  details[open] summary::before{content:"▾ "}
+  .tblwrap{padding:0 16px 12px;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+  th,td{border:1px solid var(--line-soft);padding:5px 6px;text-align:center}
+  th{color:var(--amber-dim);background:var(--panel-2)}
+  td.tcell{cursor:text}td.tcell:focus{outline:1px solid var(--amber);background:rgba(255,176,0,.08)}
+  td.rowlbl{color:var(--muted);text-align:left;white-space:nowrap}
+  .tblnote{font-size:11.5px;color:var(--muted);padding:0 16px 14px;line-height:1.6}
+  footer{margin-top:20px;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.7}
+  footer code{font-family:var(--mono);color:var(--amber-dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">TCAR-OPS · Part-ORO.FTL · OM-A Section 7 (Issue 4)</div>
+    <h1>FTL Calculation — FDP / Rest Period</h1>
+    <div class="sub">ใส่ตาราง sector (เวลา UTC/z) → คำนวณ FDP, Duty, Block, Rest ตามแบบ <b>LEON FTL Calculation</b></div>
+    <div class="ok-note">
+      <b>✓ Table 2 ตรวจสอบแล้ว</b> — ค่า Max FDP ถูกเทียบกับผลจาก LEON ของคุณ 6 เคส (เช่น report 06:00 local / 2 sect → 13h; ~20–22:00 local / 2 sect → 11h) ตรงทุกเคส ส่วนเซลล์อื่นเป็นค่ามาตรฐาน CS-FTL.1 ที่ scheme อ้างอิง — แก้ได้ที่ส่วน “FDP Table” ด้านล่าง
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- INPUT -->
+    <div class="card">
+      <h2>Duty &amp; FDP Sectors</h2>
+
+      <div class="row r2">
+        <div class="field">
+          <label>Acclimatisation — <span class="en">reference offset (UTC)</span></label>
+          <select id="accl"></select>
+        </div>
+        <div class="field">
+          <label>Report On — <span class="en">(z)</span></label>
+          <input type="text" inputmode="numeric" class="clk" id="reportOn" value="15:00" placeholder="HHMM z">
+        </div>
+      </div>
+
+      <label style="margin-bottom:7px">Sectors — <span class="en">Dep/Arr เป็น UTC (z)</span></label>
+      <div id="sectors"></div>
+      <button class="addbtn" id="addSector">+ เพิ่ม sector (operating)</button>
+
+      <label style="margin:14px 0 7px;display:block">Positioning legs — <span class="en">optional · นับเป็น duty (ก่อน operating นับ FDP ด้วย, ไม่นับ sector)</span></label>
+      <div id="poslegs"></div>
+      <button class="addbtn" id="addPos">+ เพิ่ม positioning</button>
+
+      <div class="row r2" style="margin-top:13px">
+        <div class="field">
+          <label>Report Off — <span class="en">(z) · auto = last arr + 30m</span></label>
+          <input type="text" inputmode="numeric" class="clk" id="reportOff" value="22:30" placeholder="HHMM z">
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end">
+          <label class="chk"><input type="checkbox" id="autoOff" checked> Auto Report Off</label>
+        </div>
+      </div>
+
+      <label class="chk"><input type="checkbox" id="fdpPlus"> <b>FDP+</b> &nbsp;Extension +1h (ORO.FTL.205c)</label>
+      <label class="chk"><input type="checkbox" id="pic"> Preceding rest reduction — PIC's discretion (+2h / floor 10h)</label>
+
+      <div class="sechead">Rest context</div>
+      <div class="row r3">
+        <div class="field">
+          <label>Rest before — loc</label>
+          <select id="locBefore"><option value="home">Home (12h)</option><option value="away">Away (10h)</option></select>
+        </div>
+        <div class="field">
+          <label>Rest after — loc</label>
+          <select id="locAfter"><option value="home">Home (12h)</option><option value="away">Away (10h)</option></select>
+        </div>
+        <div class="field">
+          <label>Travel away — min</label>
+          <input type="number" id="travel" value="0" min="0" max="240">
+        </div>
+      </div>
+      <div class="row r3">
+        <div class="field">
+          <label>Prev duty — <span class="en">opt</span></label>
+          <input type="text" inputmode="numeric" class="dur" id="prevDuty" value="00:00" placeholder="hh:mm">
+        </div>
+        <div class="field">
+          <label>Rest before actual</label>
+          <input type="text" inputmode="numeric" class="dur" id="restBeforeAct" value="00:00" placeholder="hh:mm">
+        </div>
+        <div class="field">
+          <label>Rest after actual</label>
+          <input type="text" inputmode="numeric" class="dur" id="restAfterAct" value="00:00" placeholder="hh:mm">
+        </div>
+      </div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="card">
+      <h2>FTL Calculation Summary <span id="verdict" style="font-size:11px"></span></h2>
+
+      <div class="readout" id="fdpReadout">
+        <div class="lbl">Flight Duty Period — Actual / Max</div>
+        <div class="big" id="fdpBig">—</div>
+      </div>
+
+      <div class="sumrow" style="border-bottom:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:10.5px;letter-spacing:.08em">
+        <span>ITEM</span><span class="lim">LIMIT</span><span class="act" style="color:var(--muted)">ACTUAL</span><span></span>
+      </div>
+      <div class="sumrow"><span class="k">Rest before duty</span><span class="lim" id="rbLim">—</span><span class="act" id="rbAct">—</span><span class="tick" id="rbTick"></span></div>
+      <div class="sumrow"><span class="k">Total block time</span><span class="lim">—</span><span class="act neutral" id="blkAct">—</span><span class="tick"></span></div>
+      <div class="sumrow"><span class="k">Flight Duty Period</span><span class="lim" id="fdpLim">—</span><span class="act" id="fdpAct">—</span><span class="tick" id="fdpTick"></span></div>
+      <div class="sumrow"><span class="k">Duty</span><span class="lim">—</span><span class="act neutral" id="dutyAct">—</span><span class="tick"></span></div>
+      <div class="sumrow"><span class="k">FDP spare (buffer)</span><span class="lim">vs max</span><span class="act neutral" id="spareAct">—</span><span class="tick"></span></div>
+      <div class="sumrow"><span class="k">Latest block-on — last sector</span><span class="lim">FDP limit</span><span class="act neutral" id="lbonAct">—</span><span class="tick"></span></div>
+      <div class="sumrow"><span class="k">Latest block-off — last sector</span><span class="lim">latest dep</span><span class="act neutral" id="lboffAct">—</span><span class="tick"></span></div>
+      <div class="sumrow"><span class="k">Rest after duty</span><span class="lim" id="raLim">—</span><span class="act" id="raAct">—</span><span class="tick" id="raTick"></span></div>
+      <div class="sumrow"><span class="k">WOCL encroachment</span><span class="lim">02:00–05:59</span><span class="act neutral" id="woclAct">—</span><span class="tick"></span></div>
+      <div class="sumrow"><span class="k">Acclimatisation</span><span class="lim">—</span><span class="act neutral" id="acclAct">—</span><span class="tick"></span></div>
+      <div class="sumrow"><span class="k">PIC discretion ceiling</span><span class="lim">+2h</span><span class="act neutral" id="picAct">—</span><span class="tick"></span></div>
+
+      <div class="flag warn" id="extFlag"><span></span></div>
+      <div class="flag bad" id="secFlag"><span></span></div>
+    </div>
+  </div>
+
+  <!-- DECISION SUMMARY -->
+  <div class="card" style="margin-top:16px;border-color:var(--amber-dim);background:linear-gradient(180deg,rgba(255,176,0,.06),var(--panel))">
+    <h2 style="color:var(--amber);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span>สรุปข้อมูลสำหรับตัดสินใจ — Decision Summary</span>
+      <span style="font-family:var(--sans);font-size:11px;text-transform:none;letter-spacing:0;color:var(--muted);display:flex;align-items:center;gap:6px">
+        Safety buffer
+        <input type="number" id="buffer" value="0" min="0" max="120" style="width:64px;padding:5px 7px;font-size:12px"> min
+      </span>
+    </h2>
+    <div id="decisionBody" style="font-family:var(--mono);font-size:14px;line-height:2.1"></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
+      เวลาวิ่งขึ้นช้าสุด (latest block-off) คำนวณโดยเลื่อนทั้ง duty ออกไปเท่ากับ FDP spare — คง block time และ ground/turnaround เดิม sector สุดท้ายจะลงถึง (engines-off) พอดีที่ FDP limit · ทุกเวลาเป็น <b>UTC (z)</b>
+    </div>
+  </div>
+
+  <!-- CUMULATIVE -->
+  <div class="card" style="margin-top:16px">
+    <h2>Cumulative Limits — ORO.FTL.210</h2>
+    <div class="row r3" style="gap:14px">
+      <div>
+        <div class="sechead" style="margin-top:0;border:none;padding:0">Duty (max)</div>
+        <div class="sumrow"><span class="k">7 days</span><span class="lim">60:00</span><span class="act neutral" id="d7">—</span><span class="tick" id="d7t"></span></div>
+        <div class="sumrow"><span class="k">14 days</span><span class="lim">110:00</span><span class="act neutral" id="d14">—</span><span class="tick" id="d14t"></span></div>
+        <div class="sumrow"><span class="k">28 days</span><span class="lim">190:00</span><span class="act neutral" id="d28">—</span><span class="tick" id="d28t"></span></div>
+      </div>
+      <div>
+        <div class="sechead" style="margin-top:0;border:none;padding:0">Flight time (max)</div>
+        <div class="sumrow"><span class="k">28 days</span><span class="lim">100:00</span><span class="act neutral" id="f28">—</span><span class="tick" id="f28t"></span></div>
+        <div class="sumrow"><span class="k">12 months</span><span class="lim">1000:00</span><span class="act neutral" id="f12">—</span><span class="tick" id="f12t"></span></div>
+      </div>
+      <div>
+        <div class="sechead" style="margin-top:0;border:none;padding:0">Actual (กรอกเพื่อตรวจ)</div>
+        <div class="field"><label>Duty 7d / 14d / 28d</label><input id="cd" placeholder="60:00/110:00/190:00" style="font-size:12px"></div>
+        <div class="field"><label>Flt 28d / 12mo</label><input id="cf" placeholder="100:00/1000:00" style="font-size:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NETWORK ROUTING REFERENCE -->
+  <style>
+    .rtcard{margin-top:16px}
+    .rtcard .rt-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+    .rtcard .rt-sub{font-size:11.5px;color:var(--muted);margin:-2px 0 14px;line-height:1.6}
+    .rt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    table.rt{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:1060px}
+    table.rt thead th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+      color:var(--amber-dim);text-align:left;padding:0 18px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+    table.rt thead th .ic{margin-right:5px;opacity:.8}
+    table.rt tbody td{padding:14px 18px;border-bottom:1px solid var(--line-soft);vertical-align:middle;white-space:nowrap}
+    table.rt col.c-route{width:18%}table.rt col.c-rep{width:10%}table.rt col.c-grd{width:13%}
+    table.rt col.c-fdp{width:18%}table.rt col.c-to{width:18%}table.rt col.c-del{width:5%}
+    .rt-route{white-space:normal}
+    table.rt tbody tr:last-child td{border-bottom:none}
+    table.rt tbody tr:hover td{background:rgba(255,176,0,.035)}
+    .rt-route{font-weight:700;color:var(--txt);letter-spacing:.02em}
+    .rt-flt{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px}
+    .rt-z{font-family:var(--mono);color:var(--txt)}
+    .rt-fdp{font-family:var(--mono);font-weight:700;color:var(--amber);font-size:14px}
+    .rt-fdp .mx{font-weight:400;font-size:11px;color:var(--muted)}
+    .rt-to{font-family:var(--mono)}
+    .rt-to b{color:#ffd27a;font-weight:700}
+    .rt-to .stn{color:var(--muted);font-size:11px}
+    @media(max-width:780px){
+      table.rt{min-width:0}
+      table.rt thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+      table.rt,table.rt tbody,table.rt tr,table.rt td{display:block;width:100%}
+      table.rt tbody tr{border:1px solid var(--line);border-radius:9px;margin-bottom:10px;padding:6px 2px;background:var(--panel-2)}
+      table.rt tbody td{display:flex;justify-content:space-between;align-items:center;gap:14px;
+        border-bottom:1px solid var(--line-soft);padding:9px 13px;text-align:right}
+      table.rt tbody tr td:first-child{text-align:left;display:block}
+      table.rt tbody td::before{content:attr(data-label);font-family:var(--mono);font-size:10px;letter-spacing:.05em;
+        text-transform:uppercase;color:var(--muted);text-align:left;flex:0 0 auto}
+      table.rt tbody td:first-child::before{display:none}
+      table.rt tbody td{white-space:normal}
+      .rt-to{text-align:right}
+    }
+    .rt-del{background:transparent;border:1px solid var(--line);color:var(--red);border-radius:6px;
+      width:30px;height:30px;cursor:pointer;font-size:15px;line-height:1}
+    .rt-del:hover{background:rgba(248,81,73,.12)}
+    .rt-foot{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
+    .rt-form{display:none;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:12px}
+    .rt-form.show{display:grid}
+    @media(max-width:680px){.rt-form{grid-template-columns:1fr 1fr}}
+    .rt-form label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+    .rt-form input{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--txt);
+      font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:7px}
+    .rt-form .full{grid-column:1/-1;display:flex;gap:9px;justify-content:flex-end}
+    .rt-form .btn{background:rgba(255,176,0,.14);border:1px solid var(--amber-dim);color:var(--amber);
+      padding:8px 18px;border-radius:7px;cursor:pointer;font-size:13px}
+    .rt-form .btn.cancel{background:transparent;border-color:var(--line);color:var(--muted)}
+  </style>
+  <div class="card rtcard">
+    <div class="rt-head">
+      <h2 style="border:none;padding:0;margin:0;color:var(--amber)">ตารางอ้างอิงเครือข่าย — Latest Take-off Reference</h2>
+    </div>
+    <div class="rt-sub">
+      เวลาออก (block-off) ช้าที่สุดของแต่ละสนามบินที่ยังไม่ทำให้ FDP เกิน — อิง Report On, Ground Time จริง และ Max FDP ตาม OM-A · ทุกเวลาเป็น <b>UTC (z)</b> · <span id="rtBufNote">Safety buffer = 0</span> (ปรับได้ที่การ์ด Decision Summary)
+    </div>
+    <div class="rt-wrap">
+      <table class="rt">
+        <colgroup><col class="c-route"><col class="c-rep"><col class="c-grd"><col class="c-fdp"><col class="c-to"><col class="c-to"><col class="c-del"></colgroup>
+        <thead><tr>
+          <th>✈ เส้นทางบิน (Routing)</th>
+          <th>◷ Report On</th>
+          <th>⏱ Ground Time</th>
+          <th>● FDP หมดเวลา (Max FDP)</th>
+          <th>⤴ ล่าช้าสุด ต้นทาง (Latest T/O 1)</th>
+          <th>⤴ ล่าช้าสุด จุดแวะพัก (Latest T/O 2)</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="rtBody"></tbody>
+      </table>
+    </div>
+    <div class="rt-foot">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="addbtn" id="rtAddToggle" style="width:auto;flex:1;min-width:160px">+ เพิ่มเส้นทาง</button>
+        <button class="addbtn" id="rtReset" style="width:auto;border-style:solid;color:var(--muted)">↺ รีเซ็ตค่าเริ่มต้น</button>
+      </div>
+      <div class="rt-form" id="rtForm">
+        <div><label>Routing (เช่น BKK - SIN - BKK)</label><input id="rfRoute" placeholder="ORG - TURN - ORG"></div>
+        <div><label>Flight no</label><input id="rfFlt" placeholder="8K000 / 8K000"></div>
+        <div><label>Report On (z)</label><input id="rfRep" inputmode="numeric" placeholder="HHMM"></div>
+        <div><label>Max FDP (hh:mm)</label><input id="rfMax" inputmode="numeric" placeholder="11:00"></div>
+        <div><label>Block 1 — ขาแรก (hh:mm)</label><input id="rfB1" inputmode="numeric" placeholder="2:30"></div>
+        <div><label>Ground / turnaround (hh:mm)</label><input id="rfGrd" inputmode="numeric" placeholder="1:10"></div>
+        <div><label>Block 2 — ขากลับ (hh:mm)</label><input id="rfB2" inputmode="numeric" placeholder="2:30"></div>
+        <div></div>
+        <div class="full">
+          <button class="btn cancel" id="rfCancel">ยกเลิก</button>
+          <button class="btn" id="rfAdd">เพิ่มเส้นทาง</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITABLE TABLE -->
+  <details>
+    <summary>FDP Table — Table 2 (Acclimatised) · แก้ไขได้</summary>
+    <div class="tblwrap">
+      <table id="t2"><thead><tr>
+        <th class="rowlbl">Start (local) ↓ / Sect →</th>
+        <th>1–2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="tblnote">
+      คลิกเซลล์เพื่อแก้ (<code>hh:mm</code>) — อัปเดตผลทันที · <b>Table 3 (Unknown X):</b> 1–2=11:00 · 3=10:30 · 4=10:00 · 5=09:30 · 6+=09:00 (เลือก “Unknown” ใน Acclimatisation)
+    </div>
+  </details>
+
+  <footer>
+    <b>Model:</b> FDP = engines-off เที่ยวสุดท้าย − Report On · Duty = Report Off − Report On (post-flight 30m) · Block = ผลรวมเวลาบินแต่ละ sector · Local start = Report On + acclimatisation offset → ใช้เปิดตาราง.<br>
+    <b>Rest:</b> after = max(duty ที่จบ, 12h home / 10h away + 2× travel เกิน 30m); before = max(prev duty, 12h/10h+travel) — <code>ORO.FTL.235</code>. Reduced rest & In-flight rest & Split duty: <b>ไม่ใช้</b>สำหรับ K-Mile.<br>
+    <b>PIC discretion:</b> +2h, rest floor 10h, รายงาน CAAT ภายใน 28 วันหากเกิน 1h — <code>OM-A 7.1.7E / 7.2</code> · เครื่องมือนี้เป็น planning aid; legal record บันทึกใน LEON (<code>ORO.FTL.245</code>).
+  </footer>
+</div>
+
+<script>
+(function(){
+ "use strict";
+ const T2=[
+  {l:"05:00–05:14",s:300,e:314,v:["12:00","11:30","11:00","10:30","10:00","09:30","09:00","09:00","09:00"]},
+  {l:"05:15–05:29",s:315,e:329,v:["12:15","11:45","11:15","10:45","10:15","09:45","09:15","09:00","09:00"]},
+  {l:"05:30–05:44",s:330,e:344,v:["12:30","12:00","11:30","11:00","10:30","10:00","09:30","09:00","09:00"]},
+  {l:"05:45–05:59",s:345,e:359,v:["12:45","12:15","11:45","11:15","10:45","10:15","09:45","09:15","09:00"]},
+  {l:"06:00–13:29",s:360,e:809,v:["13:00","12:30","12:00","11:30","11:00","10:30","10:00","09:30","09:00"]},
+  {l:"13:30–13:59",s:810,e:839,v:["12:45","12:15","11:45","11:15","10:45","10:15","09:45","09:15","09:00"]},
+  {l:"14:00–14:29",s:840,e:869,v:["12:30","12:00","11:30","11:00","10:30","10:00","09:30","09:00","09:00"]},
+  {l:"14:30–14:59",s:870,e:899,v:["12:15","11:45","11:15","10:45","10:15","09:45","09:15","09:00","09:00"]},
+  {l:"15:00–15:29",s:900,e:929,v:["12:00","11:30","11:00","10:30","10:00","09:30","09:00","09:00","09:00"]},
+  {l:"15:30–15:59",s:930,e:959,v:["11:45","11:15","10:45","10:15","09:45","09:15","09:00","09:00","09:00"]},
+  {l:"16:00–16:29",s:960,e:989,v:["11:30","11:00","10:30","10:00","09:30","09:00","09:00","09:00","09:00"]},
+  {l:"16:30–16:59",s:990,e:1019,v:["11:15","10:45","10:15","09:45","09:15","09:00","09:00","09:00","09:00"]},
+  {l:"17:00–04:59",s:1020,e:299,v:["11:00","10:30","10:00","09:30","09:00","09:00","09:00","09:00","09:00"],wrap:true}
+ ];
+ const T3=["11:00","10:30","10:00","09:30","09:00","09:00","09:00","09:00","09:00"];
+
+ const $=id=>document.getElementById(id);
+ function toMin(s){s=(s||"").trim();let h,m;
+   if(/^\d{3,4}$/.test(s)){h=+s.slice(0,-2);m=+s.slice(-2);}
+   else{const a=s.split(":");h=+a[0];m=+a[1];}
+   if(isNaN(h))h=0;if(isNaN(m))m=0;return h*60+m;}
+ const toHM=x=>{x=Math.max(0,Math.round(x));return String(Math.floor(x/60)).padStart(2,"0")+":"+String(x%60).padStart(2,"0");};
+ const col=n=>n<=2?0:(n>=10?8:n-2);
+ function rowFor(s){for(const r of T2){if(r.wrap){if(s>=r.s||s<=r.e)return r;}else if(s>=r.s&&s<=r.e)return r;}return T2[T2.length-1];}
+
+ // acclimatisation dropdown — :00 / :30 steps + key :45 zones
+ (function(){
+   const sel=$("accl");
+   const labels={420:"BKK / ICT",360:"DAC",330:"IST (India)",390:"RGN (Myanmar)",210:"Iran",
+     270:"Afghanistan",480:"HKG/SIN/KUL/CAN/PEK",540:"Tokyo",570:"ACD (+09:30)",600:"AEST",345:"Nepal (+05:45)"};
+   const offs=[];
+   for(let mm=-720;mm<=840;mm+=30) offs.push(mm);
+   [345,525,765].forEach(x=>{if(!offs.includes(x))offs.push(x);}); // +05:45, +08:45, +12:45
+   offs.sort((a,b)=>a-b);
+   offs.forEach(mm=>{
+     const opt=document.createElement("option");opt.value=mm;
+     const sign=mm<0?"−":"+";const ab=Math.abs(mm);
+     const hh=String(Math.floor(ab/60)).padStart(2,"0"),mn=String(ab%60).padStart(2,"0");
+     opt.textContent=sign+hh+":"+mn+(labels[mm]?"  ("+labels[mm]+")":"");
+     if(mm===420)opt.selected=true;sel.appendChild(opt);
+   });
+   const x=document.createElement("option");x.value="X";x.textContent="Unknown state (X)";sel.appendChild(x);
+ })();
+
+ // sectors
+ let sectors=[
+  {f:"BKK",d:"16:00",t:"SIN",a:"18:30"},
+  {f:"SIN",d:"19:30",t:"BKK",a:"22:00"}
+ ];
+ let poslegs=[]; // {type:"before"|"after", d, a}
+ function renderSectors(){
+  const c=$("sectors");c.innerHTML="";
+  sectors.forEach((s,i)=>{
+   const row=document.createElement("div");row.className="sector";
+   row.innerHTML=
+    '<div><div class="mini">FROM</div><input value="'+s.f+'" data-i="'+i+'" data-k="f" maxlength="4"></div>'+
+    '<div><div class="mini">DEP z</div><input type="text" inputmode="numeric" class="clk" value="'+s.d+'" data-i="'+i+'" data-k="d" placeholder="HHMM"></div>'+
+    '<div><div class="mini">TO</div><input value="'+s.t+'" data-i="'+i+'" data-k="t" maxlength="4"></div>'+
+    '<div><div class="mini">ARR z</div><input type="text" inputmode="numeric" class="clk" value="'+s.a+'" data-i="'+i+'" data-k="a" placeholder="HHMM"></div>'+
+    '<button class="rm" data-rm="'+i+'" title="ลบ">×</button>';
+   c.appendChild(row);
+  });
+  c.querySelectorAll("input").forEach(inp=>inp.addEventListener("input",e=>{
+    const i=+e.target.dataset.i,k=e.target.dataset.k;sectors[i][k]=e.target.value;calc();}));
+  c.querySelectorAll("[data-rm]").forEach(b=>b.addEventListener("click",e=>{
+    if(sectors.length>1){sectors.splice(+e.target.dataset.rm,1);renderSectors();calc();}}));
+ }
+
+ function renderPos(){
+  const c=$("poslegs");c.innerHTML="";
+  poslegs.forEach((p,i)=>{
+   const row=document.createElement("div");row.className="sector";
+   row.innerHTML=
+    '<div><div class="mini">TYPE</div><select data-i="'+i+'" data-k="type" style="padding:7px 6px;font-size:12px">'+
+      '<option value="before"'+(p.type==="before"?" selected":"")+'>Before op</option>'+
+      '<option value="after"'+(p.type==="after"?" selected":"")+'>After op</option></select></div>'+
+    '<div><div class="mini">DEP z</div><input type="text" inputmode="numeric" class="clk" value="'+p.d+'" data-i="'+i+'" data-k="d" placeholder="HHMM"></div>'+
+    '<div><div class="mini">ARR z</div><input type="text" inputmode="numeric" class="clk" value="'+p.a+'" data-i="'+i+'" data-k="a" placeholder="HHMM"></div>'+
+    '<div></div>'+
+    '<button class="rm" data-rmp="'+i+'" title="ลบ">×</button>';
+   c.appendChild(row);
+  });
+  c.querySelectorAll("input,select").forEach(inp=>inp.addEventListener("input",e=>{
+    const i=+e.target.dataset.i,k=e.target.dataset.k;poslegs[i][k]=e.target.value;calc();}));
+  c.querySelectorAll("[data-rmp]").forEach(b=>b.addEventListener("click",e=>{
+    poslegs.splice(+e.target.dataset.rmp,1);renderPos();calc();}));
+ }
+
+ // absolute chaining of z-times
+ function chain(times){ // array of minute values; returns absolute minutes ascending
+   const out=[times[0]];
+   for(let i=1;i<times.length;i++){let v=times[i];while(v<out[i-1])v+=1440;out.push(v);}
+   return out;
+ }
+
+ function calc(){
+  const repOn=toMin($("reportOn").value);
+  const acclVal=$("accl").value;
+  const unknown = acclVal==="X";
+  const off = unknown?0:parseInt(acclVal,10);
+
+  // build z-time sequence: repOn, [before-op positioning], dep1,arr1,...
+  // ORO.FTL.210/215: positioning before operating counts as FDP (not a sector); all positioning counts as duty.
+  const before=poslegs.filter(p=>p.type==="before");
+  const after =poslegs.filter(p=>p.type==="after");
+  const seq=[repOn];
+  before.forEach(p=>{seq.push(toMin(p.d));seq.push(toMin(p.a));});
+  sectors.forEach(s=>{seq.push(toMin(s.d));seq.push(toMin(s.a));});
+  const abs=chain(seq);
+  const lastArr=abs[abs.length-1];        // last operating engines-off
+  const fdpAct=lastArr-abs[0];            // FDP ends at last operating sector
+
+  // block (operating sectors only)
+  let block=0;
+  const opStart=1+before.length*2;
+  for(let i=0;i<sectors.length;i++){const dep=abs[opStart+i*2],arr=abs[opStart+1+i*2];block+=arr-dep;}
+
+  // duty end: after-op positioning extends duty (no post-flight 30m); otherwise last arr + 30m
+  let dutyEndAbs, repOffAbs;
+  if(after.length){
+    let running=lastArr;
+    after.forEach(p=>{let d=toMin(p.d);while(d<running)d+=1440;let a=toMin(p.a);while(a<d)a+=1440;running=a;});
+    dutyEndAbs=running;
+  } else {
+    dutyEndAbs=lastArr+30;
+  }
+  if($("autoOff").checked){repOffAbs=dutyEndAbs;$("reportOff").value=toHM(repOffAbs%1440);}
+  else{let v=toMin($("reportOff").value);while(v<lastArr)v+=1440;repOffAbs=v;}
+  const dutyAct=repOffAbs-abs[0];
+
+  // max fdp
+  const nSec=sectors.length;
+  const localStart=((repOn+off)%1440+1440)%1440;
+  let maxBasic = unknown ? toMin(T3[col(nSec)]) : toMin(rowFor(localStart).v[col(nSec)]);
+  const ext=$("fdpPlus").checked;
+  const maxFdp = ext?maxBasic+60:maxBasic;
+  const picOn=$("pic").checked;
+  const picCeil=maxFdp+120;
+
+  // WOCL local
+  const ls=localStart, le=localStart+fdpAct;
+  let ov=0;for(let k=0;k<=1;k++){const ws=120+1440*k,we=360+1440*k;const lo=Math.max(ls,ws),hi=Math.min(le,we);if(hi>lo)ov+=hi-lo;}
+
+  // rest
+  const trav=parseInt($("travel").value||"0",10);
+  const travAdj = trav>30?2*(trav-30):0;
+  const prevDuty=toMin($("prevDuty").value);
+  const restBeforeMin = Math.max(prevDuty, ($("locBefore").value==="home"?720:600)+($("locBefore").value==="away"?travAdj:0));
+  const restAfterMin  = Math.max(dutyAct, ($("locAfter").value==="home"?720:600)+($("locAfter").value==="away"?travAdj:0));
+
+  // --- render ---
+  const fdpPass = fdpAct<=maxFdp;
+  $("fdpBig").innerHTML = toHM(fdpAct).replace(":",'<small>:</small>')+' <small>/ '+toHM(maxFdp)+'</small>';
+  $("fdpReadout").className="readout "+(fdpPass?"ok":"bad");
+
+  $("blkAct").textContent=toHM(block);
+  $("dutyAct").textContent=toHM(dutyAct);
+  $("fdpLim").textContent="max "+toHM(maxFdp)+(ext?" (+1h)":"");
+  $("fdpAct").textContent=toHM(fdpAct);
+  $("fdpAct").className="act "+(fdpPass?"ok":"bad");
+  $("fdpTick").textContent=fdpPass?"✓":"✗";$("fdpTick").className="tick "+(fdpPass?"ok":"bad");
+
+  $("woclAct").textContent = ov>0?toHM(ov)+" h":"none";
+  $("acclAct").textContent = unknown?"Unknown (X)":((off<0?"−":"+")+toHM(Math.abs(off)));
+  $("picAct").textContent = picOn?toHM(picCeil)+" (floor rest 10:00)":"—";
+
+  // latest block-on (FDP deadline) / latest block-off (last sector) / spare
+  const spare = maxFdp - fdpAct;
+  const latestBlockOnAbs = abs[0] + maxFdp;                  // last operating engines-off deadline
+  const lastSecBlock = sectors.length ? (abs[opStart+(sectors.length-1)*2+1]-abs[opStart+(sectors.length-1)*2]) : 0;
+  const latestBlockOffAbs = latestBlockOnAbs - lastSecBlock; // latest off-blocks of final sector
+  $("spareAct").textContent = (spare>=0?"+":"−")+toHM(Math.abs(spare));
+  $("spareAct").className = "act "+(spare>=0?"ok":"bad");
+  $("lbonAct").textContent = toHM(latestBlockOnAbs%1440)+"z";
+  $("lboffAct").textContent = toHM(((latestBlockOffAbs%1440)+1440)%1440)+"z";
+
+  // decision summary
+  const buf=Math.max(0,parseInt($("buffer").value||"0",10));
+  const expiryAbs=abs[0]+maxFdp;
+  const expDay=Math.floor(expiryAbs/1440);
+  let dh='<div>◦ <b>FDP จะหมดเวลาที่:</b> <span style="color:var(--amber)">'+toHM(((expiryAbs%1440)+1440)%1440)+' UTC</span>'+(expDay>0?' <span style="color:var(--muted)">(+'+expDay+' วัน)</span>':'')+' <span style="color:var(--muted)">(hard limit)</span></div>';
+  sectors.forEach(s=>{
+    const hardLo=toMin(s.d)+spare;        // absolute latest off-block
+    const recLo=hardLo-buf;               // recommended after buffer
+    const dayRec=Math.floor(recLo/1440);
+    const colr=spare<0?'var(--red)':'var(--amber)';
+    dh+='<div>◦ <b>เวลาวิ่งขึ้นช้าสุด '+((s.f||'-').toUpperCase())+':</b> '+
+        '<span style="color:'+colr+'">'+toHM(((recLo%1440)+1440)%1440)+' UTC</span>'+
+        (dayRec>0?' <span style="color:var(--muted)">(+'+dayRec+' วัน)</span>':'')+
+        (buf>0?' <span style="color:var(--muted)">(limit '+toHM(((hardLo%1440)+1440)%1440)+' · buffer −'+buf+'m)</span>':'')+
+        (spare<0?' <span style="color:var(--red)">— เกิน FDP limit</span>':'')+'</div>';
+  });
+  $("decisionBody").innerHTML=dh;
+
+  // rest before
+  $("rbLim").textContent="min "+toHM(restBeforeMin);
+  const rba=toMin($("restBeforeAct").value);
+  if(rba>0){const p=rba>=restBeforeMin;$("rbAct").textContent=toHM(rba);$("rbAct").className="act "+(p?"ok":"bad");$("rbTick").textContent=p?"✓":"✗";$("rbTick").className="tick "+(p?"ok":"bad");}
+  else{$("rbAct").textContent="—";$("rbAct").className="act neutral";$("rbTick").textContent="";}
+  // rest after
+  $("raLim").textContent="min "+toHM(restAfterMin);
+  const raa=toMin($("restAfterAct").value);
+  if(raa>0){const p=raa>=restAfterMin;$("raAct").textContent=toHM(raa);$("raAct").className="act "+(p?"ok":"bad");$("raTick").textContent=p?"✓":"✗";$("raTick").className="tick "+(p?"ok":"bad");}
+  else{$("raAct").textContent="—";$("raAct").className="act neutral";$("raTick").textContent="";}
+
+  // extension flags
+  const ef=$("extFlag"),sf=$("secFlag");ef.classList.remove("show");sf.classList.remove("show");
+  if(ext){
+   let limit,why;const ovH=ov/60;
+   if(ov===0){limit=5;why="ไม่ติด WOCL";}else if(ovH<=2){limit=4;why="ติด WOCL ≤2h";}else{limit=2;why="ติด WOCL >2h";}
+   if(nSec>limit){sf.classList.add("show");sf.querySelector("span").innerHTML="<b>เกิน sector limit ของ extension</b> — "+why+" → จำกัด "+limit+" sectors แต่มี "+nSec;}
+   ef.classList.add("show");ef.querySelector("span").innerHTML="Extension: ≤ <b>2 ครั้ง/7 วัน</b> · เพิ่ม pre+post rest อย่างละ <b>2h</b> หรือ post <b>+4h</b>";
+  }
+
+  // verdict
+  const allOk = fdpPass && (rba===0||rba>=restBeforeMin) && (raa===0||raa>=restAfterMin) && !(ext&&sf.classList.contains("show"));
+  $("verdict").innerHTML = allOk?'<span style="color:var(--green)">● PASS</span>':'<span style="color:var(--red)">● CHECK</span>';
+
+  // cumulative
+  cumul("cd",["d7","d14","d28"],["d7t","d14t","d28t"],[3600,6600,11400]);
+  cumul("cf",["f28","f12"],["f28t","f12t"],[6000,60000]);
+ }
+
+ function cumul(inId,actIds,tickIds,limits){
+  const raw=($(inId).value||"").split("/").map(x=>x.trim()).filter(Boolean);
+  actIds.forEach((id,i)=>{
+   if(raw[i]&&/^\d+:\d{2}$/.test(raw[i])){
+     const v=toMin(raw[i]);const p=v<=limits[i];
+     $(id).textContent=raw[i];$(id).className="act "+(p?"ok":"bad");
+     $(tickIds[i]).textContent=p?"✓":"✗";$(tickIds[i]).className="tick "+(p?"ok":"bad");
+   } else {$(id).textContent="—";$(id).className="act neutral";$(tickIds[i]).textContent="";}
+  });
+ }
+
+ // editable table
+ (function(){const tb=$("t2").querySelector("tbody");
+  T2.forEach((r,ri)=>{const tr=document.createElement("tr");
+   const lab=document.createElement("td");lab.className="rowlbl";lab.textContent=r.l;tr.appendChild(lab);
+   r.v.forEach((val,ci)=>{const td=document.createElement("td");td.className="tcell";td.contentEditable="true";td.textContent=val;
+    td.addEventListener("blur",()=>{let t=td.textContent.trim();
+     if(/^\d{1,2}:\d{2}$/.test(t)){const p=t.split(":");t=p[0].padStart(2,"0")+":"+p[1];td.textContent=t;T2[ri].v[ci]=t;calc();}
+     else td.textContent=T2[ri].v[ci];});
+    td.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();td.blur();}});
+    tr.appendChild(td);});
+   tb.appendChild(tr);});
+ })();
+
+ $("addSector").addEventListener("click",()=>{const last=sectors[sectors.length-1];
+   sectors.push({f:last.t,d:"00:00",t:"BKK",a:"00:00"});renderSectors();calc();});
+ $("addPos").addEventListener("click",()=>{poslegs.push({type:"after",d:"00:00",a:"00:00"});renderPos();calc();});
+ ["reportOn","accl","reportOff","autoOff","fdpPlus","pic","locBefore","locAfter","travel","prevDuty","restBeforeAct","restAfterAct","cd","cf","buffer"]
+   .forEach(id=>{$(id).addEventListener("input",calc);$(id).addEventListener("change",calc);});
+
+ renderSectors();renderPos();
+ // normalize clock fields to 24h HH:MM and durations on blur
+ document.addEventListener("focusout",e=>{
+   const el=e.target;if(!el.classList)return;
+   if(el.classList.contains("clk")){el.value=toHM((((toMin(el.value)%1440)+1440)%1440));el.dispatchEvent(new Event("input",{bubbles:true}));}
+   else if(el.classList.contains("dur")){const v=Math.max(0,toMin(el.value));el.value=String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0");el.dispatchEvent(new Event("input",{bubbles:true}));}
+ });
+ calc();
+})();
+</script>
+<script>
+/* Network routing reference — independent of the main calculator. */
+(function(){
+ const M=(h,m)=>h*60+m;
+ function pm(s){s=(s||"").trim();let h,m;if(/^\d{3,4}$/.test(s)){h=+s.slice(0,-2);m=+s.slice(-2);}else{const a=s.split(":");h=+a[0];m=+a[1];}if(isNaN(h))h=0;if(isNaN(m))m=0;return h*60+m;}
+ const z=x=>{x=((Math.round(x)%1440)+1440)%1440;return String(Math.floor(x/60)).padStart(2,"0")+":"+String(x%60).padStart(2,"0");};
+ const dur=x=>Math.floor(x/60)+" ชม. "+String(x%60).padStart(2,"0")+" นาที";
+ const mxh=x=>Math.floor(x/60)+(x%60?":"+String(x%60).padStart(2,"0"):"")+"h";
+
+ // rep=report-on, max=max FDP, b1=block sector1, grd=ground/turnaround, b2=block sector2
+ const DEFAULTS=[
+  {n:"BKK – SIN – BKK",flt:"8K804 / 8K805",rep:M(15,0),max:M(11,0),b1:M(2,30),grd:M(1,10),b2:M(2,30),o:"BKK",t:"SIN"},
+  {n:"BKK – CAN – BKK",flt:"8K725 / 8K726",rep:M(13,30),max:M(11,0),b1:M(3,0),grd:M(1,30),b2:M(3,0),o:"BKK",t:"CAN"},
+  {n:"BKK – DAC – BKK",flt:"8K713 / 8K714",rep:M(23,0),max:M(13,0),b1:M(2,35),grd:M(1,0),b2:M(2,40),o:"BKK",t:"DAC"},
+  {n:"HAN – HKG – BKK",flt:"8K525 / 8K526",rep:M(14,30),max:M(11,0),b1:M(2,0),grd:M(2,0),b2:M(2,55),o:"HAN",t:"HKG"},
+  {n:"CNX – SZX – KUL",flt:"8K261 / 8K261",rep:M(14,20),max:M(11,0),b1:M(2,50),grd:M(1,40),b2:M(4,0),o:"CNX",t:"SZX"},
+  {n:"KUL – SZX – CNX",flt:"8K262 / 8K262",rep:M(12,50),max:M(11,0),b1:M(4,10),grd:M(1,40),b2:M(2,55),o:"KUL",t:"SZX"}
+ ];
+ const LS_KEY="kmile_fdp_routes_v1";
+ function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(ROUTES));}catch(e){}}
+ function load(){try{const r=localStorage.getItem(LS_KEY);if(r){const a=JSON.parse(r);
+   if(Array.isArray(a)&&a.length)return a;}}catch(e){}return null;}
+ let ROUTES = load() || DEFAULTS.map(r=>Object.assign({},r));
+
+ const tb=document.getElementById("rtBody");
+ const bufEl=document.getElementById("buffer");
+ const bufNote=document.getElementById("rtBufNote");
+ if(!tb)return;
+
+ function toCell(stn,hard,buf){
+   const rec=hard-buf;
+   const recDay=Math.floor(rec/1440);
+   return '<span class="rt-to"><span class="stn">ออกจาก '+stn+'</span> <b>'+z(rec)+'z</b>'+
+     (recDay>0?' <span class="stn">(+'+recDay+'d)</span>':'')+
+     (buf>0?'<div class="stn">limit '+z(hard)+'z · −'+buf+'m</div>':'')+'</span>';
+ }
+
+ function render(){
+  const buf=Math.max(0,parseInt((bufEl&&bufEl.value)||"0",10));
+  if(bufNote)bufNote.textContent="Safety buffer = "+buf+" min";
+  tb.innerHTML="";
+  ROUTES.forEach((r,i)=>{
+   const exp=r.rep+r.max, t2=exp-r.b2, t1=exp-r.b2-r.grd-r.b1;
+   const expDay=Math.floor(exp/1440);
+   const tr=document.createElement("tr");
+   tr.innerHTML=
+    '<td data-label="Routing"><span class="rt-route">'+r.n+'</span><div class="rt-flt">'+r.flt+'</div></td>'+
+    '<td data-label="Report On"><span class="rt-z">'+z(r.rep)+'z</span></td>'+
+    '<td data-label="Ground"><span class="rt-z">'+dur(r.grd)+'</span></td>'+
+    '<td data-label="FDP หมดเวลา"><span class="rt-fdp">'+z(exp)+'z'+(expDay>0?' <span class="mx">(+'+expDay+'d)</span>':'')+'</span> <span class="mx">('+mxh(r.max)+')</span></td>'+
+    '<td data-label="Latest T/O 1">'+toCell(r.o,t1,buf)+'</td>'+
+    '<td data-label="Latest T/O 2">'+toCell(r.t,t2,buf)+'</td>'+
+    '<td data-label=""><button class="rt-del" data-del="'+i+'" title="ลบเส้นทาง">×</button></td>';
+   tb.appendChild(tr);
+  });
+  tb.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",e=>{
+    ROUTES.splice(+e.currentTarget.dataset.del,1);save();render();}));
+ }
+
+ // add-route form
+ const form=document.getElementById("rtForm");
+ document.getElementById("rtAddToggle").addEventListener("click",()=>form.classList.toggle("show"));
+ document.getElementById("rfCancel").addEventListener("click",()=>form.classList.remove("show"));
+ document.getElementById("rfAdd").addEventListener("click",()=>{
+   const route=(document.getElementById("rfRoute").value||"").trim();
+   if(!route){alert("กรุณากรอก Routing");return;}
+   const parts=route.split(/[-–]/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+   ROUTES.push({
+     n:route,
+     flt:(document.getElementById("rfFlt").value||"").trim()||"—",
+     rep:pm(document.getElementById("rfRep").value),
+     max:pm(document.getElementById("rfMax").value),
+     b1:pm(document.getElementById("rfB1").value),
+     grd:pm(document.getElementById("rfGrd").value),
+     b2:pm(document.getElementById("rfB2").value),
+     o:parts[0]||"?", t:parts[1]||"?"
+   });
+   ["rfRoute","rfFlt","rfRep","rfMax","rfB1","rfGrd","rfB2"].forEach(id=>document.getElementById(id).value="");
+   form.classList.remove("show");
+   save();render();
+ });
+ document.getElementById("rtReset").addEventListener("click",()=>{
+   if(confirm("รีเซ็ตรายการเส้นทางกลับเป็นค่าเริ่มต้น 6 เส้นทาง?")){
+     ROUTES=DEFAULTS.map(r=>Object.assign({},r));save();render();
+   }
+ });
+
+ // react to safety buffer changes from the Decision Summary card
+ if(bufEl){bufEl.addEventListener("input",render);bufEl.addEventListener("change",render);}
+
+ render();
+})();
+</script>
+<script>
+/* PWA service worker registration (works only when hosted over HTTPS/localhost) */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("service-worker.js").catch(function(){/* ignore when opened from file:// */});
+  });
+}
+</script>
+</body>
+</html>
