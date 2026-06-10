@@ -533,7 +533,9 @@
   const trav=parseInt($("travel").value||"0",10);
   const travAdj = trav>30?2*(trav-30):0;
   const prevDuty=toMin($("prevDuty").value);
-  const restBeforeMin = Math.max(prevDuty, ($("locBefore").value==="home"?720:600)+($("locBefore").value==="away"?travAdj:0));
+  let restBeforeMin = Math.max(prevDuty, ($("locBefore").value==="home"?720:600)+($("locBefore").value==="away"?travAdj:0));
+  // PIC's discretion: preceding rest may be reduced (by up to 2h) but never below 10h (OM-A 7.2 / ORO.FTL.205 f)
+  if(picOn) restBeforeMin = Math.max(600, restBeforeMin - 120);
   const restAfterMin  = Math.max(dutyAct, ($("locAfter").value==="home"?720:600)+($("locAfter").value==="away"?travAdj:0));
 
   // --- render ---
@@ -595,7 +597,7 @@
   $("decisionBody").innerHTML=dh;
 
   // rest before
-  $("rbLim").textContent="min "+toHM(restBeforeMin);
+  $("rbLim").textContent="min "+toHM(restBeforeMin)+(picOn?" (PIC −2h, floor 10:00)":"");
   const rba=toMin($("restBeforeAct").value);
   if(rba>0){const p=rba>=restBeforeMin;$("rbAct").textContent=toHM(rba);$("rbAct").className="act "+(p?"ok":"bad");$("rbTick").textContent=p?"✓":"✗";$("rbTick").className="tick "+(p?"ok":"bad");}
   else{$("rbAct").textContent="—";$("rbAct").className="act neutral";$("rbTick").textContent="";}
