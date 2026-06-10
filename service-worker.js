@@ -1,5 +1,5 @@
 /* FDP Calculator — offline service worker */
-const CACHE = "fdp-calc-v1";
+const CACHE = "fdp-calc-v2";
 const ASSETS = [
   "./",
   "./index.html",
