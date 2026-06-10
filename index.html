@@ -142,6 +142,7 @@
         <div class="field">
           <label>Report On — <span class="en">(z)</span></label>
           <input type="text" inputmode="numeric" class="clk" id="reportOn" value="15:00" placeholder="HHMM z">
+          <label class="chk" style="padding:6px 0 0;font-size:11px"><input type="checkbox" id="autoOn" checked> Auto = DEP sector แรก − 1h</label>
         </div>
       </div>
 
@@ -272,9 +273,9 @@
     .rt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
     table.rt{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:1060px}
     table.rt thead th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
-      color:var(--amber-dim);text-align:left;padding:0 18px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+      color:var(--amber-dim);text-align:center;padding:0 14px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
     table.rt thead th .ic{margin-right:5px;opacity:.8}
-    table.rt tbody td{padding:14px 18px;border-bottom:1px solid var(--line-soft);vertical-align:middle;white-space:nowrap}
+    table.rt tbody td{padding:14px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle;white-space:nowrap;text-align:center}
     table.rt col.c-route{width:18%}table.rt col.c-rep{width:10%}table.rt col.c-grd{width:13%}
     table.rt col.c-fdp{width:18%}table.rt col.c-to{width:18%}table.rt col.c-del{width:5%}
     .rt-route{white-space:normal}
@@ -482,7 +483,13 @@
  }
 
  function calc(){
-  const repOn=toMin($("reportOn").value);
+  let repOn=toMin($("reportOn").value);
+  const autoOn = $("autoOn") && $("autoOn").checked;
+  if(autoOn && sectors.length){
+    repOn = ((toMin(sectors[0].d)-60)%1440+1440)%1440;   // reporting time = 1h before first ETD (OM-A 7.1.7 A)
+    $("reportOn").value = toHM(repOn);
+    $("reportOn").readOnly = true; $("reportOn").style.opacity = ".65";
+  } else { $("reportOn").readOnly = false; $("reportOn").style.opacity = "1"; }
   const acclVal=$("accl").value;
   const unknown = acclVal==="X";
   const off = unknown?0:parseInt(acclVal,10);
@@ -652,7 +659,7 @@
  $("addSector").addEventListener("click",()=>{const last=sectors[sectors.length-1];
    sectors.push({f:last.t,d:"00:00",t:"BKK",a:"00:00"});renderSectors();calc();});
  $("addPos").addEventListener("click",()=>{poslegs.push({type:"after",d:"00:00",a:"00:00"});renderPos();calc();});
- ["reportOn","accl","reportOff","autoOff","fdpPlus","pic","locBefore","locAfter","travel","prevDuty","restBeforeAct","restAfterAct","cd","cf","buffer"]
+ ["reportOn","accl","reportOff","autoOff","autoOn","fdpPlus","pic","locBefore","locAfter","travel","prevDuty","restBeforeAct","restAfterAct","cd","cf","buffer"]
    .forEach(id=>{$(id).addEventListener("input",calc);$(id).addEventListener("change",calc);});
 
  renderSectors();renderPos();
