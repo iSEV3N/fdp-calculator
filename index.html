@@ -37,6 +37,9 @@
   }
   header{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--amber-dim);text-transform:uppercase}
+  .applink{font-family:var(--mono);font-size:12px;color:var(--amber);text-decoration:none;white-space:nowrap;
+    border:1px solid var(--amber-dim);border-radius:7px;padding:6px 12px;background:rgba(255,176,0,.06);transition:.12s}
+  .applink:hover{background:rgba(255,176,0,.16)}
   h1{font-size:24px;font-weight:700;letter-spacing:-.01em;margin:4px 0 2px}
   .sub{color:var(--muted);font-size:13px}.sub b{color:var(--txt)}
   .ok-note{margin-top:10px;padding:9px 13px;border:1px solid rgba(63,185,80,.35);border-radius:8px;
@@ -115,7 +118,10 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">TCAR-OPS · Part-ORO.FTL · OM-A Section 7 (Issue 4)</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="eyebrow">TCAR-OPS · Part-ORO.FTL · OM-A Section 7 (Issue 4)</div>
+      <a class="applink" href="https://isev3n.github.io/tum-checklist/">▦ TUM Checklist →</a>
+    </div>
     <h1>FTL Calculation — FDP / Rest Period</h1>
     <div class="sub">ใส่ตาราง sector (เวลา UTC/z) → คำนวณ FDP, Duty, Block, Rest ตามแบบ <b>LEON FTL Calculation</b></div>
     <div class="ok-note">
@@ -572,6 +578,20 @@
         (buf>0?' <span style="color:var(--muted)">(limit '+toHM(((hardLo%1440)+1440)%1440)+' · buffer −'+buf+'m)</span>':'')+
         (spare<0?' <span style="color:var(--red)">— เกิน FDP limit</span>':'')+'</div>';
   });
+  if(picOn){
+    const eSpare=spare+120, eExp=abs[0]+picCeil, eDay=Math.floor(eExp/1440);
+    dh+='<div style="margin-top:12px;padding-top:11px;border-top:1px dashed var(--red)">'+
+        '<div style="color:var(--red);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">⚠ PIC Discretion (+2h) — เหตุฉุกเฉินเท่านั้น · ห้ามใช้วางแผน</div>'+
+        '<div>◦ <b>FDP หมดเวลา (ฉุกเฉิน):</b> <span style="color:var(--red)">'+toHM(((eExp%1440)+1440)%1440)+' UTC</span>'+(eDay>0?' <span style="color:var(--muted)">(+'+eDay+' วัน)</span>':'')+' <span style="color:var(--muted)">(rest floor 10:00)</span></div>';
+    sectors.forEach(s=>{
+      const eHard=toMin(s.d)+eSpare, eRec=eHard-buf, eRd=Math.floor(eRec/1440);
+      dh+='<div>◦ <b>วิ่งขึ้นช้าสุด '+((s.f||'-').toUpperCase())+' (ฉุกเฉิน):</b> '+
+          '<span style="color:var(--red)">'+toHM(((eRec%1440)+1440)%1440)+' UTC</span>'+
+          (eRd>0?' <span style="color:var(--muted)">(+'+eRd+' วัน)</span>':'')+
+          (buf>0?' <span style="color:var(--muted)">(limit '+toHM(((eHard%1440)+1440)%1440)+' · buffer −'+buf+'m)</span>':'')+'</div>';
+    });
+    dh+='</div>';
+  }
   $("decisionBody").innerHTML=dh;
 
   // rest before
